@@ -34,6 +34,12 @@ type ArchiveService struct {
 	workerStop  chan struct{}
 }
 
+const (
+	maxHTMLSizeBytes        = 8 * 1024 * 1024
+	maxAssetSizeBytes       = 5 * 1024 * 1024
+	maxAssetExtensionLength = 8 // limit extension length to avoid malformed/very long extensions in filenames
+)
+
 type CreateTaskInput struct {
 	URL                string `json:"url"`
 	SaveWebContent     bool   `json:"save_web_content"`
@@ -240,7 +246,7 @@ func (s *ArchiveService) fetchHTML(rawURL string) (string, error) {
 	if resp.StatusCode >= 400 {
 		return "", fmt.Errorf("fetch failed with status %d", resp.StatusCode)
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxHTMLSizeBytes))
 	if err != nil {
 		return "", err
 	}
@@ -360,7 +366,7 @@ func (s *ArchiveService) downloadImages(contentHTML, pageURL, assetsDir string) 
 
 		fileName := normalizeAssetName(resolved)
 		localPath := filepath.Join(assetsDir, fileName)
-		if err := downloadWithLimit(s.client, resolved, localPath, 5*1024*1024); err != nil {
+		if err := downloadWithLimit(s.client, resolved, localPath, maxAssetSizeBytes); err != nil {
 			stats.Failed++
 			continue
 		}
@@ -406,7 +412,6 @@ func htmlToMarkdown(input string) string {
 }
 
 func normalizeAssetName(assetURL string) string {
-	const maxAssetExtensionLength = 8
 	h := sha1.Sum([]byte(assetURL))
 	name := hex.EncodeToString(h[:])
 	ext := filepath.Ext(assetURL)

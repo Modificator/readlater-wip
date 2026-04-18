@@ -57,8 +57,11 @@ func (s *RuleService) MatchRule(url string, explicitRuleID string) (*model.Extra
 		}
 		switch r.MatchType {
 		case model.MatchTypeRegex:
-			re, _ := regexp.Compile(r.MatchExpression)
-			if re != nil && re.MatchString(url) {
+			re, err := regexp.Compile(r.MatchExpression)
+			if err != nil {
+				continue
+			}
+			if re.MatchString(url) {
 				regexCandidates = append(regexCandidates, r)
 			}
 		case model.MatchTypePrefix:
