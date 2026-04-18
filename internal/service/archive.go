@@ -1,7 +1,6 @@
 package service
 
 import (
-	"crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -16,9 +15,9 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
+	"github.com/Modificator/readlater-wip/internal/idgen"
 	"github.com/Modificator/readlater-wip/internal/model"
 	"github.com/Modificator/readlater-wip/internal/store"
 	"golang.org/x/net/html"
@@ -34,8 +33,6 @@ type ArchiveService struct {
 	client      *http.Client
 	workerStop  chan struct{}
 }
-
-var idFallbackCounter uint64
 
 type CreateTaskInput struct {
 	URL                string `json:"url"`
@@ -505,10 +502,5 @@ func findElement(n *html.Node, tag string) *html.Node {
 }
 
 func newID(prefix string) string {
-	buf := make([]byte, 8)
-	if _, err := rand.Read(buf); err == nil {
-		return prefix + "_" + hex.EncodeToString(buf)
-	}
-	seq := atomic.AddUint64(&idFallbackCounter, 1)
-	return fmt.Sprintf("%s_%d_%d", prefix, time.Now().UTC().UnixNano(), seq)
+	return idgen.New(prefix)
 }

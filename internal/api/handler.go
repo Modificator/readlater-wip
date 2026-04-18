@@ -1,14 +1,11 @@
 package api
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"net/http"
-	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
+	"github.com/Modificator/readlater-wip/internal/idgen"
 	"github.com/Modificator/readlater-wip/internal/model"
 	"github.com/Modificator/readlater-wip/internal/service"
 	"github.com/Modificator/readlater-wip/internal/store"
@@ -20,8 +17,6 @@ type Handler struct {
 	ruleSvc    *service.RuleService
 	giteaSvc   *service.GiteaService
 }
-
-var idFallbackCounter uint64
 
 func NewHandler(archiveSvc *service.ArchiveService, ruleSvc *service.RuleService, giteaSvc *service.GiteaService) *Handler {
 	return &Handler{archiveSvc: archiveSvc, ruleSvc: ruleSvc, giteaSvc: giteaSvc}
@@ -91,7 +86,7 @@ func (h *Handler) createRule(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": "invalid request body"})
 	}
 	if in.ID == "" {
-		in.ID = generateID("rule")
+		in.ID = idgen.New("rule")
 	}
 	if err := h.ruleSvc.CreateRule(&in); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
@@ -127,7 +122,7 @@ func (h *Handler) createGiteaTarget(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": "invalid request body"})
 	}
 	if in.ID == "" {
-		in.ID = generateID("gitea")
+		in.ID = idgen.New("gitea")
 	}
 	if err := h.giteaSvc.CreateTarget(&in); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
@@ -137,13 +132,4 @@ func (h *Handler) createGiteaTarget(c echo.Context) error {
 
 func (h *Handler) listGiteaTargets(c echo.Context) error {
 	return c.JSON(http.StatusOK, h.giteaSvc.ListTargets())
-}
-
-func generateID(prefix string) string {
-	buf := make([]byte, 8)
-	if _, err := rand.Read(buf); err != nil {
-		seq := atomic.AddUint64(&idFallbackCounter, 1)
-		return prefix + "_" + time.Now().UTC().Format("20060102150405.000000000") + "_" + strconv.FormatUint(seq, 10)
-	}
-	return prefix + "_" + hex.EncodeToString(buf)
 }
