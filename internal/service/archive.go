@@ -337,7 +337,7 @@ var imgURLRe = regexp.MustCompile(`(?i)<img[^>]+(?:src|data-src|data-original|da
 func (s *ArchiveService) downloadImages(contentHTML, pageURL, assetsDir string) (map[string]string, model.AssetStats) {
 	matches := imgURLRe.FindAllStringSubmatch(contentHTML, -1)
 	out := map[string]string{}
-	seenResolved := map[string]struct{}{}
+	resolvedToLocal := map[string]string{}
 	stats := model.AssetStats{}
 
 	base, _ := url.Parse(pageURL)
@@ -351,11 +351,10 @@ func (s *ArchiveService) downloadImages(contentHTML, pageURL, assetsDir string) 
 			stats.Failed++
 			continue
 		}
-		if _, ok := seenResolved[resolved]; ok {
-			out[orig] = out[resolved]
+		if local, ok := resolvedToLocal[resolved]; ok {
+			out[orig] = local
 			continue
 		}
-		seenResolved[resolved] = struct{}{}
 
 		fileName := normalizeAssetName(resolved)
 		localPath := filepath.Join(assetsDir, fileName)
@@ -366,6 +365,7 @@ func (s *ArchiveService) downloadImages(contentHTML, pageURL, assetsDir string) 
 		relPath := "assets/" + fileName
 		out[orig] = relPath
 		out[resolved] = relPath
+		resolvedToLocal[resolved] = relPath
 		stats.Downloaded++
 	}
 	return out, stats
@@ -404,10 +404,11 @@ func htmlToMarkdown(input string) string {
 }
 
 func normalizeAssetName(assetURL string) string {
+	const maxAssetExtensionLength = 8
 	h := sha1.Sum([]byte(assetURL))
 	name := hex.EncodeToString(h[:])
 	ext := filepath.Ext(assetURL)
-	if len(ext) > 8 || ext == "" {
+	if len(ext) > maxAssetExtensionLength || ext == "" {
 		ext = ".bin"
 	}
 	return name + ext

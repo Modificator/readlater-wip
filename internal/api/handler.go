@@ -1,6 +1,8 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"strings"
 	"time"
@@ -85,7 +87,7 @@ func (h *Handler) createRule(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": "invalid request body"})
 	}
 	if in.ID == "" {
-		in.ID = "rule_" + time.Now().UTC().Format("20060102150405.000000000")
+		in.ID = generateID("rule")
 	}
 	if err := h.ruleSvc.CreateRule(&in); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
@@ -121,7 +123,7 @@ func (h *Handler) createGiteaTarget(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": "invalid request body"})
 	}
 	if in.ID == "" {
-		in.ID = "gitea_" + time.Now().UTC().Format("20060102150405.000000000")
+		in.ID = generateID("gitea")
 	}
 	if err := h.giteaSvc.CreateTarget(&in); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
@@ -131,4 +133,12 @@ func (h *Handler) createGiteaTarget(c echo.Context) error {
 
 func (h *Handler) listGiteaTargets(c echo.Context) error {
 	return c.JSON(http.StatusOK, h.giteaSvc.ListTargets())
+}
+
+func generateID(prefix string) string {
+	buf := make([]byte, 8)
+	if _, err := rand.Read(buf); err != nil {
+		return prefix + "_" + time.Now().UTC().Format("20060102150405.000000000")
+	}
+	return prefix + "_" + hex.EncodeToString(buf)
 }
