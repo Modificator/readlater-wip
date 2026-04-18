@@ -4,7 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/Modificator/readlater-wip/internal/model"
@@ -18,6 +20,8 @@ type Handler struct {
 	ruleSvc    *service.RuleService
 	giteaSvc   *service.GiteaService
 }
+
+var idFallbackCounter uint64
 
 func NewHandler(archiveSvc *service.ArchiveService, ruleSvc *service.RuleService, giteaSvc *service.GiteaService) *Handler {
 	return &Handler{archiveSvc: archiveSvc, ruleSvc: ruleSvc, giteaSvc: giteaSvc}
@@ -138,7 +142,8 @@ func (h *Handler) listGiteaTargets(c echo.Context) error {
 func generateID(prefix string) string {
 	buf := make([]byte, 8)
 	if _, err := rand.Read(buf); err != nil {
-		return prefix + "_" + time.Now().UTC().Format("20060102150405.000000000")
+		seq := atomic.AddUint64(&idFallbackCounter, 1)
+		return prefix + "_" + time.Now().UTC().Format("20060102150405.000000000") + "_" + strconv.FormatUint(seq, 10)
 	}
 	return prefix + "_" + hex.EncodeToString(buf)
 }
